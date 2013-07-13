@@ -12,7 +12,7 @@ GameObject::GameObject() :pos(0,0,0), active(false) {
 	int type_: the kind of object this is. 
 	float speed: A higher value makes the enemy move faster. */
 
-void GameObject::init(float x, float y, float z, RECT bounds_, int type_, float speed_) {
+void GameObject::init(float x, float y, float z, RECT bounds_, float type_, float speed_) {
 	pos.x = x;
 	pos.y = y;
 	pos.z = z;
@@ -166,10 +166,10 @@ void GameObject::setAnimTime(int time) {
 }
 
 // getter and setter for the object's type
-int GameObject::getType() {
+float GameObject::getType() {
 	return type;
 }
-void GameObject::setType(int type_) {
+void GameObject::setType(float type_) {
 	type = type_;
 }
 
