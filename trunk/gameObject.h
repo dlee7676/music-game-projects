@@ -10,13 +10,13 @@ private:
 	D3DXVECTOR3 pos, startPos;
 	RECT bounds, drawingBounds;
 	bool active, exploding;
-	float s, t, speed;
-	int animTime, type;
+	float s, t, speed, type;
+	int animTime;
 	RECT testRect;
 
 public:
 	GameObject::GameObject();
-	void init(float x, float y, float z, RECT bounds_, int type_, float speed_);
+	void init(float x, float y, float z, RECT bounds_, float type_, float speed_);
 	bool isActive();
 	void setActive(bool setting);
 	float getPos(int coord);
@@ -41,8 +41,8 @@ public:
 	void setExploding(bool exploding_);
 	int getAnimTime();
 	void setAnimTime(int time);
-	int getType();
-	void setType(int type_);
+	float getType();
+	void setType(float type_);
 	float getSpeed();
 	void setSpeed(float speed_);
 };
