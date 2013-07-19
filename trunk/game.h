@@ -29,6 +29,7 @@ using namespace std;
 #define QUARTER 1
 #define EIGHTH 0.5
 #define SIXTEENTH 0.25
+#define THIRTYSECOND 0.125
 
 class Game {
 
