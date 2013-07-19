@@ -140,6 +140,7 @@ void Game::handleInput() {
 					}
 				}
 			}
+			//BEATDIST*(float(170.0f)/float(bpm))*beat*speedMod
 			if (GetAsyncKeyState('G') && waitTime <= 0) {
 				float lastMod = speedMod;
 				if (speedMod > 1)
@@ -180,12 +181,7 @@ void Game::handleInput() {
 				Sleep(100);
 			}
 			if (GetAsyncKeyState(VK_RETURN)) {
-				values[index] = arrows[1].getPos(1);
-				diff = abs(values[index] - values[index-1]);
-				index++;
-				if (index >= 100)
-					index = 1;
-				Sleep(150);
+				diff = offset;
 			}
 			break;
 		}
@@ -298,39 +294,61 @@ void Game::initGameScreen() {
 	placeObject(&stepZone, cols[2], BEATDIST, 0, target, 0, 1);
 	placeObject(&stepZone, cols[3], BEATDIST, 0, target, 0, 1);
 	lastCol = -1;
-	/*setArrows(9,10,SIXTEENTH);
-	setArrows(10,11,SIXTEENTH);
-	setArrows(12,13,SIXTEENTH);
-	setArrows(13,14,SIXTEENTH);
-	setArrows(17,18,SIXTEENTH);
-	setArrows(21,22,SIXTEENTH);
-	setArrows(25,26,SIXTEENTH);*/
-	//setArrows(7,10,SIXTEENTH);
-	/*placeObject(&arrows, 7, cols[0], arrow, 1, 1);
-	placeObject(&arrows, 7.25, cols[1], arrow, 1, 1);
-	placeObject(&arrows, 7.5, cols[2], arrow, 1, 1);
-	placeObject(&arrows, 7.75, cols[3], arrow, 1, 1);*/
-	setArrows(9,13,QUARTER);
-	setArrows(13,17.5,EIGHTH);
-	setArrows(18,21,QUARTER);
-	setArrows(21,25.5,EIGHTH);
-	setArrows(26,29,QUARTER);
-	setArrows(29,33.5,EIGHTH);
-	setArrows(34,37,QUARTER);
-	setArrows(37,41,EIGHTH);
-	setArrows(41,44,QUARTER);
-	setArrows(44,45.5,SIXTEENTH);
-	setArrows(46,47.5,SIXTEENTH);
-	setArrows(48,52,QUARTER);
-	setArrows(52,53.5,SIXTEENTH);
-	setArrows(54,55.5,SIXTEENTH);
-	setArrows(56,60,QUARTER);
-	setArrows(60,61.5,SIXTEENTH);
-	setArrows(62,63.5,SIXTEENTH);
-	setArrows(64,70,QUARTER);
 
-	values[0] = arrows[1].getPos(1);
-	values[1] = arrows[1].getPos(1);
+	if (song == 0) {
+		offset = 0;
+		setArrows(9,13,QUARTER);
+		setArrows(13,17.5,EIGHTH);
+		setArrows(18,21,QUARTER);
+		setArrows(21,25.5,EIGHTH);
+		setArrows(26,29,QUARTER);
+		setArrows(29,33.5,EIGHTH);
+		setArrows(34,37,QUARTER);
+		setArrows(37,41,EIGHTH);
+		setArrows(41,44,QUARTER);
+		setArrows(44,45.5,SIXTEENTH);
+		setArrows(46,47.5,SIXTEENTH);
+		setArrows(48,52,QUARTER);
+		setArrows(52,53.5,SIXTEENTH);
+		setArrows(54,55.5,SIXTEENTH);
+		setArrows(56,60,QUARTER);
+		setArrows(60,61.5,SIXTEENTH);
+		setArrows(62,63.5,SIXTEENTH);
+		setArrows(64,70,QUARTER);
+	}
+
+	if (song == 1) {
+		offset = 0.5;
+		setArrows(10,11,QUARTER);
+		/*setArrows(8.5,9.5,QUARTER);
+		setArrows(9.5,10,SIXTEENTH);
+		setArrows(10.25,11,QUARTER);
+		setArrows(12,12.75,SIXTEENTH);
+		setArrows(13,15.5,EIGHTH);
+		setArrows(15.5,16.25,SIXTEENTH);
+		setArrows(16.5,17,QUARTER);
+		setArrows(17,17.75,SIXTEENTH);
+		setArrows(18.25,19,QUARTER);
+		setArrows(19,20,QUARTER);
+		setArrows(19.5,20.5,QUARTER);
+		setArrows(20.5,22.25,SIXTEENTH);
+		setArrows(22.5,23.5,QUARTER);
+		setArrows(23,24,QUARTER);
+		setArrows(23.5,23.8,THIRTYSECOND);
+		setArrows(24,24.2,THIRTYSECOND);
+		setArrows(24.5,25,QUARTER);
+		setArrows(24.75,25.75,QUARTER);
+		setArrows(25.25,26,SIXTEENTH);
+		setArrows(26.5,27.5,QUARTER);
+		setArrows(27.25,28.25,QUARTER);
+		setArrows(27.75,28.75,QUARTER);
+		setArrows(28.5,30.5,SIXTEENTH);
+		setArrows(30.75,31.75,QUARTER);
+		setArrows(31.25,32.25,QUARTER);
+		setArrows(31.625,32,THIRTYSECOND);
+		setArrows(32.833334,48.7,0.166666);
+		setArrows(49,51,SIXTEENTH);*/
+	}
 
 	IGraphBuilder *pGraph;
 	HRESULT hr = CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void **)&pGraph);
@@ -381,9 +399,9 @@ void Game::setRects() {
 	explosion.right = 380;
 	explosion.bottom = 2056;
 	target.left = 282;
-	target.top = 1980;
+	target.top = 2005;
 	target.right = 322;
-	target.bottom = 2000;
+	target.bottom = 2015;
 	bottom.left=quit.left;
 	bottom.right=quit.right;
 	bottom.top=quit.bottom+30;
@@ -420,7 +438,7 @@ void Game::drawArrows() {
 			if (arrows[i].isExploding() && arrows[i].getPos(1) > stepZone[0].getPos(1)-30) {
 				for (size_t j = 0; j < 4; j++) {
 					if (arrows[i].getPos(0) == cols[j])
-						gameSprites->Draw(targetTexture, &explosion, NULL, &stepZone[j].getPos(), 0xFFFFFFFF);
+						gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3(stepZone[j].getPos(0)-5,stepZone[j].getPos(1)-12, 0), 0xFFFFFFFF);
 				}
 				arrows[i].setAnimTime(arrows[i].getAnimTime()-1);
 				if (arrows[i].getAnimTime() <= 0) {
@@ -429,11 +447,14 @@ void Game::drawArrows() {
 			}
 			else {
 				if (arrows[i].getType() == QUARTER) 
-					gameSprites->Draw(targetTexture, &arrow, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,255,125,125));
+					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,255,60,125));
 				else if (arrows[i].getType() == EIGHTH) 
-					gameSprites->Draw(targetTexture, &arrow, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,125,125,255));
+					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,125,60,255));
 				else if (arrows[i].getType() == SIXTEENTH)
-					gameSprites->Draw(targetTexture, &arrow, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,125,255,125));
+					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,125,255,125));
+				else if (arrows[i].getType() == THIRTYSECOND)
+					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,250,75,50));
+				else gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,250,50,250));
 			}
 		}
 	}
@@ -442,7 +463,7 @@ void Game::drawArrows() {
 void Game::moveObjects() {
 	for (size_t i = 0; i < arrows.size(); i++) {
 		if (!arrows[i].isExploding() || abs(arrows[i].getPos(1)-stepZone[0].getPos(1)) >= 30) {	
-			arrows[i].move(0,-2*speedMod,0);
+			arrows[i].move(0,-speedMod*(float(170.0f)/float(bpm)),0);
 			if (arrows[i].getPos(1) < stepZone[0].getPos(1)-30 && !arrows[i].isExploding()) {
 				currentRating = 100;
 				ratingTime = 20;
@@ -462,14 +483,7 @@ void Game::placeObject(vector<GameObject>* vec, float x, float y, float z, RECT 
 
 void Game::placeObject(vector<GameObject>* vec, float beat, float column, RECT bounds, float type, float speed) {
 	GameObject next;
-	float nextType = beat - (int)beat;
-		if (nextType == 0)
-			nextType = QUARTER;
-		else if (fmodf(nextType, 0.5) == 0)
-			nextType = EIGHTH;
-		else if (fmodf(nextType, 0.25) == 0)
-			nextType = SIXTEENTH;
-	next.init(column,BEATDIST*(float(170.0f)/float(bpm))*beat*speedMod,0,bounds,nextType,speed);
+	next.init(column,BEATDIST*(float(170.0f)/float(bpm))*beat*speedMod,0,bounds,type,speed);
 	vec->push_back(next);
 }
 
@@ -479,13 +493,15 @@ void Game::setArrows(float start, float end, float type) {
 		while (nextCol == lastCol)
 			nextCol = cols[rand()%4];
 		lastCol = nextCol;
-		float nextType = i - (int)i;
+		float nextType = (i-offset) - (int)(i);
 		if (nextType == 0)
 			nextType = QUARTER;
 		else if (fmodf(nextType, 0.5) == 0)
 			nextType = EIGHTH;
 		else if (fmodf(nextType, 0.25) == 0)
 			nextType = SIXTEENTH;
+		else if (fmodf(nextType, 0.125) == 0)
+			nextType = THIRTYSECOND;
 		placeObject(&arrows, i, nextCol, arrow, nextType, 1);
 	}
 }
@@ -512,10 +528,6 @@ void Game::judge(float distance) {
         D3DCOLOR fontColor: the colour of the text. */
 
 void Game::drawTextAndNumber(LPCWSTR text, float num, RECT pos, D3DCOLOR fontColor) {
-        /*wchar_t buffer[16];
-        wsprintf(buffer, TEXT("%d"), num);
-        wstring s(text);
-        s += wstring(buffer);*/ 
 		wstring s(text);
 		wstringstream wss;
 		wss << text << num;
