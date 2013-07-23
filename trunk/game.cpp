@@ -96,96 +96,114 @@ void Game::handleInput() {
 		}
 
 		case 1: {
-			if (GetAsyncKeyState('D') && waitTime <= 0) {
+			if (GetAsyncKeyState('D') && waitTime[1] <= 0) {
 				for (size_t i = 0; i < arrows.size(); i++) {
 					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[0] && abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1)) <= 45) {
 						arrows[i].setExploding(true);
 						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 30;
-						//waitTime=20;
+						ratingTime = 40;
+						waitTime[1]=10;
 						break;
 					}
 				}
 			}
-			if (GetAsyncKeyState('F') && waitTime <= 0) {
+			if (GetAsyncKeyState('F') && waitTime[2] <= 0) {
 				for (size_t i = 0; i < arrows.size(); i++) {
 					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[1] && abs(stepZone[1].getPos(1) + 5 - arrows[i].getPos(1)) <= 30) {
 						arrows[i].setExploding(true);
 						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 30;
-						//waitTime=20;
+						ratingTime = 40;
+						waitTime[2]=10;
 						break;
 					}
 				}
 			}
-			if (GetAsyncKeyState('J') && waitTime <= 0) {
+			if (GetAsyncKeyState('J') && waitTime[3] <= 0) {
 				for (size_t i = 0; i < arrows.size(); i++) {
 					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[2] && abs(stepZone[2].getPos(1) + 5 - arrows[i].getPos(1)) <= 30) {
 						arrows[i].setExploding(true);
 						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 30;
-						//waitTime=20;
+						ratingTime = 40;
+						waitTime[3]=10;
 						break;
 					}
 				}
 			}
-			if (GetAsyncKeyState('K') && waitTime <= 0) {
+			if (GetAsyncKeyState('K') && waitTime[4] <= 0) {
 				for (size_t i = 0; i < arrows.size(); i++) {
 					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[3] && abs(stepZone[3].getPos(1) + 5 - arrows[i].getPos(1)) <= 30) {
 						arrows[i].setExploding(true);
 						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 30;
-						//waitTime=20;
+						ratingTime = 40;
+						waitTime[4]=10;
 						break;
 					}
 				}
 			}
 			//BEATDIST*(float(170.0f)/float(bpm))*beat*speedMod
-			if (GetAsyncKeyState('G') && waitTime <= 0) {
+			if (GetAsyncKeyState('G') && waitTime[0] <= 0) {
 				float lastMod = speedMod;
-				if (speedMod > 1)
+				if (speedMod > 1) {
 					speedMod--;
-				for(size_t i = 0; i < arrows.size(); i++) {
-					if (arrows[i].isActive())
-						arrows[i].setPos(arrows[i].getPos(0), arrows[i].getPos(1)*(speedMod/lastMod), 0);
+					for(size_t i = 0; i < arrows.size(); i++) {
+						if (arrows[i].isActive()) 
+							arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
+					}
 				}
-				waitTime=20;
+				waitTime[0]=10;
 			}
-			if (GetAsyncKeyState('H') && waitTime <= 0) {
+			if (GetAsyncKeyState('H') && waitTime[0] <= 0) {
 				float lastMod = speedMod;
 				speedMod++;
 				for(size_t i = 0; i < arrows.size(); i++) {
 					if (arrows[i].isActive())
-						arrows[i].setPos(arrows[i].getPos(0), arrows[i].getPos(1)*(speedMod/lastMod), 0);
+						arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
 				}
-				waitTime=20;
+				values[0] = arrows[0].getPos(1)-stepZone[0].getPos(1);
+				waitTime[0]=10;
 			}
-			else waitTime--;
-			if (GetAsyncKeyState('1')) {
+			if (GetAsyncKeyState('1') && waitTime[0] <= 0) {
 				float lastMod = speedMod;
-				if (speedMod > 0.25)
+				if (speedMod > 0.25) {
 					speedMod-=0.25;
-				for(size_t i = 0; i < arrows.size(); i++) {
-					if (arrows[i].isActive())
-						arrows[i].setPos(arrows[i].getPos(0), arrows[i].getPos(1)*(speedMod/lastMod), 0);
+					for(size_t i = 0; i < arrows.size(); i++) {
+						if (arrows[i].isActive())
+							arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
+					}
 				}
-				Sleep(100);
+				waitTime[0]=10;
 			}
-			if (GetAsyncKeyState('2')) {
+			if (GetAsyncKeyState('2') && waitTime[0] <= 0) {
 				float lastMod = speedMod;
 				speedMod+=0.25;
 				for(size_t i = 0; i < arrows.size(); i++) {
 					if (arrows[i].isActive())
-						arrows[i].setPos(arrows[i].getPos(0), arrows[i].getPos(1)*(speedMod/lastMod), 0);
+						arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
 				}
-				Sleep(100);
+				waitTime[0]=10;
 			}
-			if (GetAsyncKeyState(VK_RETURN)) {
-				diff = offset;
+			if (GetAsyncKeyState(VK_RETURN) && waitTime[0] <= 0) {
+				diff = values[1]-values[0];
+				values[0] = values[1];
+				waitTime[0]=30;
 			}
 			break;
 		}
 	}
+}
+
+void Game::key1() {
+	//if ((GetKeyState('D')&1) && waitTime[1] <= 0) {
+	for (size_t i = 0; i < arrows.size(); i++) {
+		if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[0] && abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1)) <= 45) {
+			arrows[i].setExploding(true);
+			currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
+			ratingTime = 40;
+			waitTime[1]=10;
+			break;
+		}
+	}
+	//}
 }
 
 /* render(): determines the positions of game objects and draws them on the screen. */
@@ -226,11 +244,12 @@ void Game::render() {
 			judge(currentRating);
 			drawTextAndNumber(TEXT("BPM: "), bpm, topDisplay1, fontColor);
 			drawTextAndNumber(TEXT("Speed Modifier: "), speedMod, topDisplay2, fontColor);
-			/*drawTextAndNumber(TEXT("diff "), diff, bottom, fontColor);
-			drawTextAndNumber(TEXT("cur "), values[index-1], start, fontColor);
-			drawTextAndNumber(TEXT("old "), values[index-2], quit, fontColor);*/
+			drawTextAndNumber(TEXT("diff "), diff, bottom, fontColor);
+			drawTextAndNumber(TEXT("cur "), values[1], start1, fontColor);
+			drawTextAndNumber(TEXT("old "), values[0], quit, fontColor);
 			gameSprites->End();
-			waitTime--;
+			for (size_t i = 0; i < 5; i++)
+				waitTime[i]--;
 			break;
 		}
 	}
@@ -296,31 +315,31 @@ void Game::initGameScreen() {
 	lastCol = -1;
 
 	if (song == 0) {
-		offset = 0;
-		setArrows(9,13,QUARTER);
-		setArrows(13,17.5,EIGHTH);
-		setArrows(18,21,QUARTER);
-		setArrows(21,25.5,EIGHTH);
-		setArrows(26,29,QUARTER);
-		setArrows(29,33.5,EIGHTH);
-		setArrows(34,37,QUARTER);
-		setArrows(37,41,EIGHTH);
-		setArrows(41,44,QUARTER);
-		setArrows(44,45.5,SIXTEENTH);
-		setArrows(46,47.5,SIXTEENTH);
-		setArrows(48,52,QUARTER);
-		setArrows(52,53.5,SIXTEENTH);
-		setArrows(54,55.5,SIXTEENTH);
-		setArrows(56,60,QUARTER);
-		setArrows(60,61.5,SIXTEENTH);
-		setArrows(62,63.5,SIXTEENTH);
-		setArrows(64,70,QUARTER);
+		offset = 0.5;
+		setArrows(8.5,12.5,QUARTER);
+		setArrows(12.5,16.5,EIGHTH);
+		setArrows(16.5,20.5,QUARTER);
+		setArrows(20.5,24.5,EIGHTH);
+		setArrows(24.5,28.5,QUARTER);
+		setArrows(28.5,32.5,EIGHTH);
+		setArrows(32.5,36.5,QUARTER);
+		setArrows(36.5,40.5,EIGHTH);
+		setArrows(40.5,45.5,QUARTER);
+		setArrows(45.5,47,SIXTEENTH);
+		setArrows(47.5,49,SIXTEENTH);
+		setArrows(49.5,53,QUARTER);
+		setArrows(53.5,55,SIXTEENTH);
+		setArrows(55.5,57,SIXTEENTH);
+		setArrows(57.5,61.5,QUARTER);
+		setArrows(61.5,63,SIXTEENTH);
+		setArrows(63.5,65,SIXTEENTH);
+		setArrows(65.5,69.5,QUARTER);
 	}
 
 	if (song == 1) {
 		offset = 0.5;
-		setArrows(10,11,QUARTER);
-		/*setArrows(8.5,9.5,QUARTER);
+		//setArrows(160,161,QUARTER);
+		setArrows(8.5,9.5,QUARTER);
 		setArrows(9.5,10,SIXTEENTH);
 		setArrows(10.25,11,QUARTER);
 		setArrows(12,12.75,SIXTEENTH);
@@ -346,9 +365,12 @@ void Game::initGameScreen() {
 		setArrows(30.75,31.75,QUARTER);
 		setArrows(31.25,32.25,QUARTER);
 		setArrows(31.625,32,THIRTYSECOND);
-		setArrows(32.833334,48.7,0.166666);
-		setArrows(49,51,SIXTEENTH);*/
+		setArrows(32.833334,49,0.166666);
+		setArrows(49.5,51.25,SIXTEENTH);
 	}
+
+	values[0] = arrows[0].getPos(1);
+	values[1] = arrows[0].getPos(1);
 
 	IGraphBuilder *pGraph;
 	HRESULT hr = CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void **)&pGraph);
@@ -463,7 +485,8 @@ void Game::drawArrows() {
 void Game::moveObjects() {
 	for (size_t i = 0; i < arrows.size(); i++) {
 		if (!arrows[i].isExploding() || abs(arrows[i].getPos(1)-stepZone[0].getPos(1)) >= 30) {	
-			arrows[i].move(0,-speedMod*(float(170.0f)/float(bpm)),0);
+			arrows[i].move(0,-2*speedMod*(float(bpm)/float(170.0f)),0);
+			values[1] = arrows[0].getPos(1)-stepZone[0].getPos(1);
 			if (arrows[i].getPos(1) < stepZone[0].getPos(1)-30 && !arrows[i].isExploding()) {
 				currentRating = 100;
 				ratingTime = 20;
@@ -483,7 +506,7 @@ void Game::placeObject(vector<GameObject>* vec, float x, float y, float z, RECT 
 
 void Game::placeObject(vector<GameObject>* vec, float beat, float column, RECT bounds, float type, float speed) {
 	GameObject next;
-	next.init(column,BEATDIST*(float(170.0f)/float(bpm))*beat*speedMod,0,bounds,type,speed);
+	next.init(column,BEATDIST*beat*speedMod+stepZone[0].getPos(1),0,bounds,type,speed);
 	vec->push_back(next);
 }
 

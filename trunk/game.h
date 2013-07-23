@@ -24,7 +24,7 @@ using namespace std;
 #define SCREEN_HEIGHT 600
 
 #define PI atan(1.0f)*4
-#define BEATDIST 41.75
+#define BEATDIST 41.7
 
 #define QUARTER 1
 #define EIGHTH 0.5
@@ -61,7 +61,8 @@ private:
 	vector<GameObject> arrows;
 	vector<GameObject> stepZone;
 	bool focus, invincible, spellcard1, spellcard2, clear, ready;
-	int leveltime, curAlpha, curFrame, curRow, moveRate, fireDirection, hits, score, level, lastCol, ratingTime, waitTime;
+	int leveltime, curAlpha, curFrame, curRow, moveRate, fireDirection, hits, score, level, lastCol, ratingTime;
+	int waitTime[100];
 	int cols[100];
 	float currentT, offset, speedMod, currentRating, bpm;
 
@@ -71,6 +72,7 @@ public:
 	void gameloop();
 	void render();
 	void handleInput();
+	void key1();
 	void updatePositions();
 	void cleanup();
 

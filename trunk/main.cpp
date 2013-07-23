@@ -16,6 +16,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
                    LPSTR lpCmdLine,
                    int nCmdShow)
 {
+	// the object that controls the game loop
 	Game game;
     // the handle for the window, filled by a function
     HWND _hWnd;
@@ -102,6 +103,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
                 PostQuitMessage(0);
                 return 0;
             } break;
+
     }
 
     // Handle any messages the switch statement didn't
