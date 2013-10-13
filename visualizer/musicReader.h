@@ -1,3 +1,6 @@
+/* musicReader.h
+Handles the playing of sound files and extraction of audio sample data from them.  DirectShow-related functions are dealt with by this class. */
+
 #ifndef MR_H
 #define MR_H
 
@@ -10,15 +13,17 @@
 class MusicReader {
 
 private:
+	// objects for building filter graph
 	IGraphBuilder *pGraph;
 	IMediaControl *pControl;
 	IMediaEvent   *pEvent;
 
+	// objects for adding the sample grabber
 	IBaseFilter *pGrabberF;
     ISampleGrabber *pGrabber;
 	IBaseFilter *pNullF;
-	BYTE* pBuffer;
 	AM_MEDIA_TYPE mt;
+
 	HWND hwnd;
 	int song;
 	bool grabbed;
@@ -29,11 +34,11 @@ public:
 	void play();
 	void stop();
 	void pause();
-	BYTE* setupSampleGrabber();
-	long getSampleSize();
-	BYTE* getSample();
+	void setupSampleGrabber();
+	void getSample();
 	bool isGrabbed();
 	bool isReady();
+	long getSampleSize();
 	HRESULT IsPinConnected(IPin *pPin, BOOL *pResult);
 	HRESULT IsPinDirection(IPin *pPin, PIN_DIRECTION dir, BOOL *pResult);
 	HRESULT MatchPin(IPin *pPin, PIN_DIRECTION direction, BOOL bShouldBeConnected, BOOL *pResult);
