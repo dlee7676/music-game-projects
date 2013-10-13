@@ -1,14 +1,17 @@
 #include "game.h"
 
-/* setHwnd(): used to bring the window handle from the main function into the Game object for initializing Direct3D */
+/* void setHwnd(): used to bring the window handle from the main function into the Game object for initializing Direct3D */
 void Game::setHwnd(HWND _hwnd) {
 	hwnd = _hwnd;
 }
 
-/* initd3d(): initializes a Direct3D object */
-void Game::initd3d() {
+/* void initGame(): initializes Direct3D and DirectShow and sets initial game state */
+void Game::initGame() {
 	d3d = Direct3DCreate9(D3D_SDK_VERSION);
 	D3DPRESENT_PARAMETERS d3dpp;
+	if (FAILED(d3d)) {
+		MessageBox(hwnd, TEXT("Error initializing D3D object"), TEXT("Error"), MB_ICONERROR);
+	}
 	// sets the presentation parameters
 	ZeroMemory(&d3dpp, sizeof(d3dpp));
 	d3dpp.Windowed = FALSE;
@@ -19,28 +22,36 @@ void Game::initd3d() {
 	d3dpp.BackBufferHeight = SCREEN_HEIGHT;
 	d3d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &pDev);
 
-	initMenuScreen();
+	// initalize DirectShow for playing sound
 	HRESULT hr = CoInitialize(NULL);
 	if(FAILED(hr)) {
 		MessageBox(hwnd, TEXT("Error initializing DirectShow"), TEXT("Error"), MB_ICONERROR);
 	}
+
+	// set game parameters
+	initMenuScreen();
+	speedMod = 3.5;
+	screen = 0;
+	menuSelection = 0;
+	setRects();
 }
 
-/* gameloop(): function run repeatedly in the message loop, executes drawing code and responds to game controls */
+/* void gameloop(): function run repeatedly in the message loop, executes drawing code and responds to game controls */
 void Game::gameloop() {
-	updatePositions();
+	moveObjects();
 	render();
 	handleInput();
 }
 
-/* handleInput(): contains responses to key presses of the game controls */
+/* void handleInput(): responds to key presses of the game controls */
 void Game::handleInput() {
 	// Esc returns to the menu screen from gameplay
 	if (GetAsyncKeyState(VK_ESCAPE) && screen != 0) {
 		screen = 0;
 		initMenuScreen();
 		stepZone.clear();
-		arrows.clear();
+		notes.clear();
+		targetTexture->Release();
 		HRESULT hr = pControl->Stop();
 	}
 
@@ -75,14 +86,12 @@ void Game::handleInput() {
 					song = 0;
 					bpm = 170;
 					initGameScreen();
-					//menuBackgroundTexture->Release();
 				}
 				if (menuSelection == 1) {
 					screen = 1;
 					song = 1;
 					bpm = 75;
 					initGameScreen();
-					//menuBackgroundTexture->Release();
 				}
 				if (menuSelection == 3)
 					PostQuitMessage(0);
@@ -96,117 +105,70 @@ void Game::handleInput() {
 		}
 
 		case 1: {
+			// D, F, J, and K attempt to hit notes in the four columns
 			if (GetAsyncKeyState('D') && waitTime[1] <= 0) {
-				for (size_t i = 0; i < arrows.size(); i++) {
-					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[0] && abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1)) <= 45) {
-						arrows[i].setExploding(true);
-						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 40;
-						waitTime[1]=10;
-						break;
-					}
-				}
+				hitNote(0);
 			}
 			if (GetAsyncKeyState('F') && waitTime[2] <= 0) {
-				for (size_t i = 0; i < arrows.size(); i++) {
-					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[1] && abs(stepZone[1].getPos(1) + 5 - arrows[i].getPos(1)) <= 30) {
-						arrows[i].setExploding(true);
-						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 40;
-						waitTime[2]=10;
-						break;
-					}
-				}
+				hitNote(1);
 			}
 			if (GetAsyncKeyState('J') && waitTime[3] <= 0) {
-				for (size_t i = 0; i < arrows.size(); i++) {
-					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[2] && abs(stepZone[2].getPos(1) + 5 - arrows[i].getPos(1)) <= 30) {
-						arrows[i].setExploding(true);
-						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 40;
-						waitTime[3]=10;
-						break;
-					}
-				}
+				hitNote(2);
 			}
 			if (GetAsyncKeyState('K') && waitTime[4] <= 0) {
-				for (size_t i = 0; i < arrows.size(); i++) {
-					if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[3] && abs(stepZone[3].getPos(1) + 5 - arrows[i].getPos(1)) <= 30) {
-						arrows[i].setExploding(true);
-						currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
-						ratingTime = 40;
-						waitTime[4]=10;
-						break;
-					}
-				}
+				hitNote(3);
 			}
-			//BEATDIST*(float(170.0f)/float(bpm))*beat*speedMod
 			if (GetAsyncKeyState('G') && waitTime[0] <= 0) {
-				float lastMod = speedMod;
-				if (speedMod > 1) {
-					speedMod--;
-					for(size_t i = 0; i < arrows.size(); i++) {
-						if (arrows[i].isActive()) 
-							arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
-					}
-				}
-				waitTime[0]=10;
+				changeSpeed(0.25, 0);
 			}
 			if (GetAsyncKeyState('H') && waitTime[0] <= 0) {
-				float lastMod = speedMod;
-				speedMod++;
-				for(size_t i = 0; i < arrows.size(); i++) {
-					if (arrows[i].isActive())
-						arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
-				}
-				values[0] = arrows[0].getPos(1)-stepZone[0].getPos(1);
-				waitTime[0]=10;
-			}
-			if (GetAsyncKeyState('1') && waitTime[0] <= 0) {
-				float lastMod = speedMod;
-				if (speedMod > 0.25) {
-					speedMod-=0.25;
-					for(size_t i = 0; i < arrows.size(); i++) {
-						if (arrows[i].isActive())
-							arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
-					}
-				}
-				waitTime[0]=10;
-			}
-			if (GetAsyncKeyState('2') && waitTime[0] <= 0) {
-				float lastMod = speedMod;
-				speedMod+=0.25;
-				for(size_t i = 0; i < arrows.size(); i++) {
-					if (arrows[i].isActive())
-						arrows[i].setPos(arrows[i].getPos(0), (arrows[i].getPos(1)-BEATDIST)*(speedMod/lastMod)+BEATDIST, 0);
-				}
-				waitTime[0]=10;
-			}
-			if (GetAsyncKeyState(VK_RETURN) && waitTime[0] <= 0) {
-				diff = values[1]-values[0];
-				values[0] = values[1];
-				waitTime[0]=30;
+				changeSpeed(0.25, 1);
 			}
 			break;
 		}
 	}
 }
 
-void Game::key1() {
-	//if ((GetKeyState('D')&1) && waitTime[1] <= 0) {
-	for (size_t i = 0; i < arrows.size(); i++) {
-		if (!arrows[i].isExploding() && arrows[i].getPos(0) == cols[0] && abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1)) <= 45) {
-			arrows[i].setExploding(true);
-			currentRating = abs(stepZone[0].getPos(1) + 5 - arrows[i].getPos(1));
+/* void hitNote(int column): Interacts with a note in a given column when it is within a certain range of the targets.  Each column has a 
+	corresponding key that calls this when it is pressed.
+	Parameters:
+	int column: the column to check for notes. */
+void Game::hitNote(int column) {
+	// check each note in the chart to see if it is in the column of the pressed key, if it has been hit yet, and if it is close enough to the targets
+	for (size_t i = 0; i < notes.size(); i++) {
+		if (!notes[i].isHit() && notes[i].getPos(0) == cols[column] && abs(stepZone[0].getPos(1) + 5 - notes[i].getPos(1)) <= 40) {
+			notes[i].setHit(true);
+			// get the distance from the note to the target for judging the timing
+			currentRating = abs(stepZone[0].getPos(1) + 5 - notes[i].getPos(1));
 			ratingTime = 40;
-			waitTime[1]=10;
+			// add a short delay before this can be triggered again so that this only occurs once per key press
+			waitTime[column+1]=10;
+			// exit the loop so that only one note is hit at a time
 			break;
 		}
 	}
-	//}
 }
 
-/* render(): determines the positions of game objects and draws them on the screen. */
+/* void changeSpeed(float difference, int direction): Increases or decreases the scroll speed of notes, and adjusts their spacing to make them reach the targets
+	at the same time as they would at the previous speed.
+	Parameters:
+	float difference: the amount to change the speed by.
+	int direction: 0 to decrease speed, nonzero to increase. */
+void Game::changeSpeed(float difference, int direction) {
+	float lastMod = speedMod;
+	if (direction == 0) {
+		if (speedMod > difference) 
+			speedMod-=difference;
+	}
+	else speedMod+=difference;
+	for(size_t i = 0; i < notes.size(); i++) 
+		if (notes[i].isActive())
+			notes[i].setPos(notes[i].getPos(0), (notes[i].getPos(1)-stepZone[0].getPos(1))*(speedMod/lastMod)+stepZone[0].getPos(1), 0);
+	waitTime[0]=10;
+}
+
+
+/* void render(): determines the positions of game objects and draws them on the screen. */
 void Game::render() {
 	pDev->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0,0,0), 1.0f, 0);
 	pDev->BeginScene();
@@ -214,41 +176,29 @@ void Game::render() {
 		case 0: {
 			// draw menu screen
 			gameSprites->Begin(D3DXSPRITE_ALPHABLEND);
-			//gameSprites->Draw(menuBackgroundTexture, NULL, NULL, &D3DXVECTOR3(0,0,0), 0xFFFFFFFF);
 			gameSprites->End();
-			if (menuSelection == 0)
-				fontColor = D3DCOLOR_ARGB(255,240,100,100); 
-			else fontColor = D3DCOLOR_ARGB(255,240,240,240); 
+			toggleMenuText(0);
 			font->DrawText(NULL, TEXT("Play REM III (BPM 170)"), -1, &start1, 0, fontColor);
-			if (menuSelection == 1)
-				fontColor = D3DCOLOR_ARGB(255,240,100,100); 
-			else fontColor = D3DCOLOR_ARGB(255,240,240,240); 
+			toggleMenuText(1);
 			font->DrawText(NULL, TEXT("Play Destination Unknown (BPM 75)"), -1, &start2, 0, fontColor);
-			if (menuSelection == 2)
-				fontColor = D3DCOLOR_ARGB(255,240,100,100); 
-			else fontColor = D3DCOLOR_ARGB(255,240,240,240); 
+			toggleMenuText(2);
 			drawTextAndNumber(TEXT("Speed Modifier: "), speedMod, speed, fontColor);
-			if (menuSelection == 3)
-				fontColor = D3DCOLOR_ARGB(255,240,100,100); 
-			else fontColor = D3DCOLOR_ARGB(255,240,240,240); 
+			toggleMenuText(3);
 			font->DrawText(NULL, TEXT("Quit"), -1, &quit, 0, fontColor);
 
 			break;
 		}
 		case 1: {
-			gameSprites->Begin(D3DXSPRITE_ALPHABLEND);
 			// draw the game elements
-			//gameSprites->Draw(menuBackgroundTexture, &target, NULL, &D3DXVECTOR3(20,20,0), 0xFFFFFFFF);
+			gameSprites->Begin(D3DXSPRITE_ALPHABLEND);
 			drawStepZone();
-			drawArrows();
+			drawNotes();
 			judge(currentRating);
 			drawTextAndNumber(TEXT("BPM: "), bpm, topDisplay1, fontColor);
 			drawTextAndNumber(TEXT("Speed Modifier: "), speedMod, topDisplay2, fontColor);
-			drawTextAndNumber(TEXT("diff "), diff, bottom, fontColor);
-			drawTextAndNumber(TEXT("cur "), values[1], start1, fontColor);
-			drawTextAndNumber(TEXT("old "), values[0], quit, fontColor);
+			//drawTextAndNumber(TEXT("index: "), notes[0].getPos(1), start2, fontColor);
 			gameSprites->End();
-			for (size_t i = 0; i < 5; i++)
+			for (int i = 0; i < 5; i++)
 				waitTime[i]--;
 			break;
 		}
@@ -257,11 +207,7 @@ void Game::render() {
 	pDev->Present(NULL, NULL, NULL, NULL);
 }
 
-void Game::updatePositions() {
-	moveObjects();
-}
-
-/* cleanup(): frees the memory associated with the game's objects. */
+/* void cleanup(): frees the memory associated with the game's objects. */
 void Game::cleanup() {
 	d3d->Release();
 	pDev->Release();
@@ -269,120 +215,160 @@ void Game::cleanup() {
 	font->Release();
 }
 
+/* void initMenuScreen(): initializes values relevant to the menu screen. */
 void Game::initMenuScreen() {
-	// screen 0
 	if (FAILED(D3DXCreateSprite(pDev, &gameSprites))) {
 		MessageBox(hwnd, TEXT("Error Loading Sprite"), TEXT("Error"), MB_ICONERROR);
 		return;
 	} 
-	if (FAILED(D3DXCreateTextureFromFile(pDev, TEXT("prismriver.jpg"), &menuBackgroundTexture))) {
-		MessageBox(hwnd, TEXT("Error Loading Texture"), TEXT("Error"), MB_ICONERROR);
-		return;
-	}
 	D3DXCreateFont(pDev, 30, 0, FW_BOLD, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, 
 		DEFAULT_PITCH | FF_DONTCARE, TEXT("Courier New"), &font); 
-	setRects();
-	index = 2;
-	diff = 0;
-	screen = 0;
-	speedMod = 3.5;
-	menuSelection = 0;
-	score = 0;
 }
 
+/* void drawTextAndNumber(LPCWSTR text, int num, RECT pos, D3DCOLOR fontColor): draws text with a variable number after it.
+        Parameters:
+        LPCWSTR text: the text before the number.
+        int num: the number value.
+        RECT pos: where to draw the text.
+        D3DCOLOR fontColor: the colour of the text. */
+void Game::drawTextAndNumber(LPCWSTR text, float num, RECT pos, D3DCOLOR fontColor) {
+		wstring s(text);
+		wstringstream wss;
+		wss << text << num;
+        font->DrawText(NULL, wss.str().c_str(), -1, &pos, 0, fontColor);
+}
+
+/* void toggleMenuText(int selection): highlights the chosen menu selection. 
+	Parameters:
+	int selection: the currently selected menu option. */
+void Game::toggleMenuText(int selection) {
+	if (menuSelection == selection)
+		fontColor = D3DCOLOR_ARGB(255,240,100,100); 
+	else fontColor = D3DCOLOR_ARGB(255,240,240,240); 
+}
+
+/* void initGameScreen(): loads textures for game elements and initializes values relevant to the play screen. */
 void Game::initGameScreen() {
 	loadTextures();	
 	D3DXCreateFont(pDev, 30, 0, FW_BOLD, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, 
 		DEFAULT_PITCH | FF_DONTCARE, TEXT("Franklin Gothic Demi"), &font); 
-	srand((unsigned int)(time(0)));
-	fontColor2 = D3DCOLOR_ARGB(255,240,240,240);
-	curFrame = 0;
-	curRow = 0;
-	curAlpha = 50;
-	currentT = 0;
-	hits = 0;
-	ratingTime = 0;
-
+	// set the positions of the target areas at the top
 	cols[0] = 20;
 	cols[1] = 120;
 	cols[2] = 220;
 	cols[3] = 320;
+	ratingTime = 0;
+	curChart.init(&notes, cols);
+	curChart.placeTargets(&stepZone);
+	curChart.setSpeed(speedMod);
+	// set the note positions
+	curChart.loadNoteChart(song);
+	// play the chosen song
+	playMusic(song);	
+}
 
-	placeObject(&stepZone, cols[0], BEATDIST, 0, target, 0, 1);
-	placeObject(&stepZone, cols[1], BEATDIST, 0, target, 0, 1);
-	placeObject(&stepZone, cols[2], BEATDIST, 0, target, 0, 1);
-	placeObject(&stepZone, cols[3], BEATDIST, 0, target, 0, 1);
-	lastCol = -1;
-
-	if (song == 0) {
-		offset = 0.5;
-		setArrows(8.5,12.5,QUARTER);
-		setArrows(12.5,16.5,EIGHTH);
-		setArrows(16.5,20.5,QUARTER);
-		setArrows(20.5,24.5,EIGHTH);
-		setArrows(24.5,28.5,QUARTER);
-		setArrows(28.5,32.5,EIGHTH);
-		setArrows(32.5,36.5,QUARTER);
-		setArrows(36.5,40.5,EIGHTH);
-		setArrows(40.5,45.5,QUARTER);
-		setArrows(45.5,47,SIXTEENTH);
-		setArrows(47.5,49,SIXTEENTH);
-		setArrows(49.5,53,QUARTER);
-		setArrows(53.5,55,SIXTEENTH);
-		setArrows(55.5,57,SIXTEENTH);
-		setArrows(57.5,61.5,QUARTER);
-		setArrows(61.5,63,SIXTEENTH);
-		setArrows(63.5,65,SIXTEENTH);
-		setArrows(65.5,69.5,QUARTER);
+/* void loadTextures(int level_): loads the textures needed for a level. */
+void Game::loadTextures() {
+	if (FAILED(D3DXCreateTextureFromFile(pDev, TEXT("note.png"), &targetTexture))) {
+		MessageBox(hwnd, TEXT("Error Loading Texture"), TEXT("Error"), MB_ICONERROR);
+		return;
 	}
+}
 
-	if (song == 1) {
-		offset = 0.5;
-		//setArrows(160,161,QUARTER);
-		setArrows(8.5,9.5,QUARTER);
-		setArrows(9.5,10,SIXTEENTH);
-		setArrows(10.25,11,QUARTER);
-		setArrows(12,12.75,SIXTEENTH);
-		setArrows(13,15.5,EIGHTH);
-		setArrows(15.5,16.25,SIXTEENTH);
-		setArrows(16.5,17,QUARTER);
-		setArrows(17,17.75,SIXTEENTH);
-		setArrows(18.25,19,QUARTER);
-		setArrows(19,20,QUARTER);
-		setArrows(19.5,20.5,QUARTER);
-		setArrows(20.5,22.25,SIXTEENTH);
-		setArrows(22.5,23.5,QUARTER);
-		setArrows(23,24,QUARTER);
-		setArrows(23.5,23.8,THIRTYSECOND);
-		setArrows(24,24.2,THIRTYSECOND);
-		setArrows(24.5,25,QUARTER);
-		setArrows(24.75,25.75,QUARTER);
-		setArrows(25.25,26,SIXTEENTH);
-		setArrows(26.5,27.5,QUARTER);
-		setArrows(27.25,28.25,QUARTER);
-		setArrows(27.75,28.75,QUARTER);
-		setArrows(28.5,30.5,SIXTEENTH);
-		setArrows(30.75,31.75,QUARTER);
-		setArrows(31.25,32.25,QUARTER);
-		setArrows(31.625,32,THIRTYSECOND);
-		setArrows(32.833334,49,0.166666);
-		setArrows(49.5,51.25,SIXTEENTH);
+/* void drawStepZone(): draws the target area at the top of the screen. */
+void Game::drawStepZone() {
+	for (size_t i = 0; i < stepZone.size(); i++) {
+		index = i;
+		if (stepZone[i].getType()==0)
+			gameSprites->Draw(targetTexture, &stepZone[i].getDrawingBounds(), NULL, &D3DXVECTOR3(stepZone[i].getPos(0),stepZone[i].getPos(1)+10, 0), 0xFFFFFFFF);
 	}
+}
 
-	values[0] = arrows[0].getPos(1);
-	values[1] = arrows[0].getPos(1);
+/* void drawNotes(): draws the scrolling notes and the "explosion" when they are hit. */
+void Game::drawNotes() {
+	for (size_t i = 0; i < notes.size(); i++) {
+		if (notes[i].isActive()) {
+			// draw an explosion if the note has been hit (the key for its column was pressed when it was close to the targets)
+			if (notes[i].isHit() && notes[i].getPos(1) > stepZone[0].getPos(1)-40) {
+				for (int j = 0; j < 4; j++) {
+					if (notes[i].getPos(0) == cols[j])
+						gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3(stepZone[j].getPos(0)-10,stepZone[j].getPos(1)-17, 0), 0xFFFFFFFF);
+				}
+				// show the explosion for a given amount of time and then set the note to be inactive
+				notes[i].setAnimTime(notes[i].getAnimTime()-1);
+				if (notes[i].getAnimTime() <= 0) {
+					notes[i].setActive(false);
+				}
+			}
+			// draw the unhit notes with colours corresponding to their timing
+			else {
+				if (notes[i].getType() == QUARTER) 
+					gameSprites->Draw(targetTexture, &notes[i].getDrawingBounds(), NULL, &notes[i].getPos(), D3DCOLOR_ARGB(255,255,60,125));
+				else if (notes[i].getType() == EIGHTH) 
+					gameSprites->Draw(targetTexture, &notes[i].getDrawingBounds(), NULL, &notes[i].getPos(), D3DCOLOR_ARGB(255,125,60,255));
+				else if (notes[i].getType() == SIXTEENTH)
+					gameSprites->Draw(targetTexture, &notes[i].getDrawingBounds(), NULL, &notes[i].getPos(), D3DCOLOR_ARGB(255,125,255,125));
+				else if (notes[i].getType() == THIRTYSECOND)
+					gameSprites->Draw(targetTexture, &notes[i].getDrawingBounds(), NULL, &notes[i].getPos(), D3DCOLOR_ARGB(255,250,75,50));
+				else gameSprites->Draw(targetTexture, &notes[i].getDrawingBounds(), NULL, &notes[i].getPos(), D3DCOLOR_ARGB(255,250,50,250));
+			}
+		}
+	}
+}
 
-	IGraphBuilder *pGraph;
+/* void playMusic(int song_): plays a specified music file. 
+	Parameters:
+	int song: indicates the chosen song.*/
+void Game::playMusic(int song_) {
+	// set up a DirectShow FilterGraph to play the music file
 	HRESULT hr = CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void **)&pGraph);
 	hr = pGraph->QueryInterface(IID_IMediaControl, (void **)&pControl);
 	hr = pGraph->QueryInterface(IID_IMediaEvent, (void **)&pEvent);
-	if (song == 0)
+	// choose the file
+	if (song_ == 0)
 		hr = pGraph->RenderFile(TEXT("rem3.mp3"), NULL);
-	if (song == 1)
+	if (song_ == 1)
 		hr = pGraph->RenderFile(TEXT("dest.mp3"), NULL);
+	// play the audio
 	hr = pControl->Run();
 }
 
+/* void moveObjects(): changes the positions of the game objects (scrolling notes). Indicates a note has been missed if it moves far enough past the targets.*/
+void Game::moveObjects() {
+	for (size_t i = 0; i < notes.size(); i++) {
+		if (!notes[i].isHit() || abs(notes[i].getPos(1)-stepZone[0].getPos(1)) >= 40) {	
+			notes[i].move(0,-2*speedMod*(float(bpm)/float(170.0f)),0);
+			// check if a note has been missed (passed the targets)
+			if (notes[i].getPos(1) < stepZone[0].getPos(1)-40 && !notes[i].isHit()) {
+				currentRating = 100;
+				ratingTime = 40;
+				notes[i].setHit(true);
+			}
+			if (notes[i].getPos(1) < -10)
+				notes[i].setActive(false);
+		}
+	}
+}
+
+/* void judge(float distance): displays a rating for when a note is hit, judging how accurate the timing was. 
+	Parameters:
+	float distance: the note's distance from the target zone when it was hit; 0 is perfectly timed. */ 
+void Game::judge(float distance) {
+	// display text for a given amount of time after a hit
+	if (ratingTime > 0) {
+		if (distance <= 10)
+			font->DrawText(NULL, TEXT("Fantastic!"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,240,240,255));
+		else if (distance <= 20)
+			font->DrawText(NULL, TEXT("Excellent"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,240,240,100));
+		else if (distance <= 40)
+			font->DrawText(NULL, TEXT("Decent"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,125,240,125));
+		else if (distance > 40)
+			font->DrawText(NULL, TEXT("Miss"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,240,125,125));
+	}
+	ratingTime--;
+}
+
+/* void setRects(): defines rectangles for drawing game graphics. */
 void Game::setRects() {
 	start1.left=SCREEN_WIDTH*1/6;
 	start1.right=SCREEN_WIDTH;
@@ -412,156 +398,9 @@ void Game::setRects() {
 	ratingDisplay.right = 700;
 	ratingDisplay.top = 250;
 	ratingDisplay.bottom = 320;
-	arrow.left=0;
-	arrow.top=1050;
-	arrow.right=55;
-	arrow.bottom=1070;
-	explosion.left = 333;
-	explosion.top = 1988;
-	explosion.right = 380;
-	explosion.bottom = 2056;
-	target.left = 282;
-	target.top = 2005;
-	target.right = 322;
-	target.bottom = 2015;
-	bottom.left=quit.left;
-	bottom.right=quit.right;
-	bottom.top=quit.bottom+30;
-	bottom.bottom=bottom.top+45;
+	explosion.left = 0;
+	explosion.top = 0;
+	explosion.right = 60;
+	explosion.bottom = 60;
 }
 
-/* void loadTextures(size_t level_): loads the textures needed for a level. */
-void Game::loadTextures() {
-	if (FAILED(D3DXCreateTextureFromFile(pDev, TEXT("enemySprites.png"), &targetTexture))) {
-		MessageBox(hwnd, TEXT("Error Loading Texture"), TEXT("Error"), MB_ICONERROR);
-		return;
-	}
-	if (FAILED(D3DXCreateTextureFromFile(pDev, TEXT("explosionSpriteSheet.png"), &explosionTexture))) {
-		MessageBox(hwnd, TEXT("Error Loading Texture"), TEXT("Error"), MB_ICONERROR);
-		return;
-	}
-	if (FAILED(D3DXCreateTextureFromFile(pDev, TEXT("forest.png"), &levelBackgroundTexture))) {
-		MessageBox(hwnd, TEXT("Error Loading Texture"), TEXT("Error"), MB_ICONERROR);
-		return;
-	}
-}
-
-void Game::drawStepZone() {
-	for (size_t i = 0; i < stepZone.size(); i++) {
-		if (stepZone[i].getType()==0)
-			gameSprites->Draw(targetTexture, &target, NULL, &stepZone[i].getPos(), 0xFFFFFFFF);
-	}
-}
-
-void Game::drawArrows() {
-	// draw enemies
-	for (size_t i = 0; i < arrows.size(); i++) {
-		if (arrows[i].isActive()) {
-			if (arrows[i].isExploding() && arrows[i].getPos(1) > stepZone[0].getPos(1)-30) {
-				for (size_t j = 0; j < 4; j++) {
-					if (arrows[i].getPos(0) == cols[j])
-						gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3(stepZone[j].getPos(0)-5,stepZone[j].getPos(1)-12, 0), 0xFFFFFFFF);
-				}
-				arrows[i].setAnimTime(arrows[i].getAnimTime()-1);
-				if (arrows[i].getAnimTime() <= 0) {
-					arrows[i].setActive(false);
-				}
-			}
-			else {
-				if (arrows[i].getType() == QUARTER) 
-					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,255,60,125));
-				else if (arrows[i].getType() == EIGHTH) 
-					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,125,60,255));
-				else if (arrows[i].getType() == SIXTEENTH)
-					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,125,255,125));
-				else if (arrows[i].getType() == THIRTYSECOND)
-					gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,250,75,50));
-				else gameSprites->Draw(targetTexture, &target, NULL, &arrows[i].getPos(), D3DCOLOR_ARGB(255,250,50,250));
-			}
-		}
-	}
-}
-
-void Game::moveObjects() {
-	for (size_t i = 0; i < arrows.size(); i++) {
-		if (!arrows[i].isExploding() || abs(arrows[i].getPos(1)-stepZone[0].getPos(1)) >= 30) {	
-			arrows[i].move(0,-2*speedMod*(float(bpm)/float(170.0f)),0);
-			values[1] = arrows[0].getPos(1)-stepZone[0].getPos(1);
-			if (arrows[i].getPos(1) < stepZone[0].getPos(1)-30 && !arrows[i].isExploding()) {
-				currentRating = 100;
-				ratingTime = 20;
-				arrows[i].setExploding(true);
-			}
-			if (arrows[i].getPos(1) < -10)
-				arrows[i].setActive(false);
-		}
-	}
-}
-
-void Game::placeObject(vector<GameObject>* vec, float x, float y, float z, RECT bounds, float type, float speed) {
-	GameObject next;
-	next.init(x,y,z,bounds,type,speed);
-	vec->push_back(next);
-}
-
-void Game::placeObject(vector<GameObject>* vec, float beat, float column, RECT bounds, float type, float speed) {
-	GameObject next;
-	next.init(column,BEATDIST*beat*speedMod+stepZone[0].getPos(1),0,bounds,type,speed);
-	vec->push_back(next);
-}
-
-void Game::setArrows(float start, float end, float type) {
-	for (float i = start; i < end; i+=type) {
-		int nextCol = cols[rand()%4];
-		while (nextCol == lastCol)
-			nextCol = cols[rand()%4];
-		lastCol = nextCol;
-		float nextType = (i-offset) - (int)(i);
-		if (nextType == 0)
-			nextType = QUARTER;
-		else if (fmodf(nextType, 0.5) == 0)
-			nextType = EIGHTH;
-		else if (fmodf(nextType, 0.25) == 0)
-			nextType = SIXTEENTH;
-		else if (fmodf(nextType, 0.125) == 0)
-			nextType = THIRTYSECOND;
-		placeObject(&arrows, i, nextCol, arrow, nextType, 1);
-	}
-}
-
-void Game::judge(float distance) {
-	if (ratingTime > 0) {
-		if (distance <= 10)
-			font->DrawText(NULL, TEXT("Fantastic!"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,240,240,255));
-		else if (distance <= 20)
-			font->DrawText(NULL, TEXT("Excellent"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,240,240,100));
-		else if (distance <= 30)
-			font->DrawText(NULL, TEXT("Decent"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,125,240,125));
-		else if (distance > 30)
-			font->DrawText(NULL, TEXT("Miss"), -1, &ratingDisplay, 0, D3DCOLOR_ARGB(240,240,125,125));
-	}
-	ratingTime--;
-}
-
-/* void drawTextAndNumber(LPCWSTR text, int num, RECT pos, D3DCOLOR fontColor): draws text with a variable number after it.
-        Parameters:
-        LPCWSTR text: the text before the number.
-        int num: the number value.
-        RECT pos: where to draw the text.
-        D3DCOLOR fontColor: the colour of the text. */
-
-void Game::drawTextAndNumber(LPCWSTR text, float num, RECT pos, D3DCOLOR fontColor) {
-		wstring s(text);
-		wstringstream wss;
-		wss << text << num;
-        font->DrawText(NULL, wss.str().c_str(), -1, &pos, 0, fontColor);
-}
-
-/* void resetMatrices(): returns all transformation matrices to identity matrices. */
-void Game::resetMatrices() {
-	D3DXMatrixIdentity(&spriteManip);
-	D3DXMatrixIdentity(&rotation);
-	D3DXMatrixIdentity(&scaling);
-	D3DXMatrixIdentity(&translation1);
-	D3DXMatrixIdentity(&translation2);
-}

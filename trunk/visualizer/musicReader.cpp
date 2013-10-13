@@ -2,15 +2,23 @@
 
 using namespace std;
 
+/* void init(float x, float y, float z, RECT bounds_, int type_, float speed_):
+	Initializes a MusicReader object with the following characteristics:
+	Parameters:
+	HWND hwnd_: handle to the program window.
+	int song_: the song to play.  
+	vector<BYTE>* drawValue: pointer to a vector of BYTE values, to be used for drawing the waveform. */
 void MusicReader::init(HWND hwnd_, int song_, vector<BYTE>* drawValue) {
-	HRESULT hr = CoInitialize(NULL);
-	if(FAILED(hr)) {
-		MessageBox(hwnd, TEXT("Error initializing DirectShow"), TEXT("Error"), MB_ICONERROR);
-	}
 	hwnd = hwnd_;
 	song = song_;
 	grabbed = false;
 	grabCB.setDrawValue(drawValue);
+
+	// initialize COM library for DirectShow
+	HRESULT hr = CoInitialize(NULL);
+	if(FAILED(hr)) {
+		MessageBox(hwnd, TEXT("Error initializing DirectShow"), TEXT("Error"), MB_ICONERROR);
+	}
 
 	// set up a DirectShow FilterGraph to play the music file
 	hr = CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void **)&pGraph);
@@ -27,6 +35,7 @@ void MusicReader::init(HWND hwnd_, int song_, vector<BYTE>* drawValue) {
 	}
 }
 
+// play, pause, or stop audio
 void MusicReader::play() {
 	// play the audio
 	HRESULT hr = pControl->Run();
@@ -34,14 +43,12 @@ void MusicReader::play() {
 		MessageBox(hwnd, TEXT("Error playing audio"), TEXT("Error"), MB_ICONERROR);;
 	}
 }
-
 void MusicReader::pause() {
 	HRESULT hr = pControl->Pause();
 	if (FAILED(hr)) {
 		MessageBox(hwnd, TEXT("Error stopping audio"), TEXT("Error"), MB_ICONERROR);;
 	}
 }
-
 void MusicReader::stop() {
 	HRESULT hr = pControl->Stop();
 	if (FAILED(hr)) {
@@ -49,7 +56,10 @@ void MusicReader::stop() {
 	}
 }
 
-BYTE* MusicReader::setupSampleGrabber() {
+
+/* void setupSampleGrabber(): Creates a DirectShow filter graph, adds a sample grabber to it, and configures the grabber.
+	Based on code from http://www.geekpage.jp/en/programming/directshow/samplegrabber-1.php */
+void MusicReader::setupSampleGrabber() {
 	// Create the Sample Grabber filter.
     HRESULT hr = CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER,
         IID_PPV_ARGS(&pGrabberF));
@@ -64,11 +74,6 @@ BYTE* MusicReader::setupSampleGrabber() {
         MessageBox(hwnd, TEXT("Error querying sample grabber filter"), TEXT("Error"), MB_ICONERROR);
     }
 	// determine the format for connecting SampleGrabber.
-	// You can configure the SampleGrabber insertion place
-	// by changing the values in this structure.
-	// If you use the values in this sample,
-	// you can get the video frame data right before
-	// it is displayed.
 	ZeroMemory(&mt, sizeof(mt));
 	mt.majortype = MEDIATYPE_Audio;
 	mt.subtype = MEDIASUBTYPE_PCM;
@@ -86,12 +91,12 @@ BYTE* MusicReader::setupSampleGrabber() {
 	// get MediaControl
 	pGraph->QueryInterface(IID_IMediaControl,
 		(LPVOID *)&pControl);
+	// create Graph.
+	// Graph that contains SampleGrabber
+	// will be created automatically.
 	if (!grabbed) {
-		// create Graph.
-		// Graph that contains SampleGrabber
-		// will be created automatically.
 		if (song == 0)
-			pGraph->RenderFile(TEXT("ets.mp3"), NULL);
+			pGraph->RenderFile(TEXT("dest.mp3"), NULL);
 		if (song == 1)
 			pGraph->RenderFile(TEXT("snows.mp3"), NULL);
 	}
@@ -99,53 +104,40 @@ BYTE* MusicReader::setupSampleGrabber() {
 	// This must be done after the Graph is created
 	// by RenderFile.
 	pGrabber->GetConnectedMediaType(&mt);
-
-	//pGrabber->SetOneShot(TRUE);
-
-	// Configure SampleGrabber to do grabbing.
-	// Buffer data can not be obtained if you
-	// do not use SetBufferSamples.
-	// You can use SetBufferSamples after Run() too.
+	// Set SampleGrabber to not automatically generate the sample buffer (this will be done by a callback function instead)
 	pGrabber->SetBufferSamples(FALSE);
-
+	// play audio file if no samples have been grabbed
 	if (!grabbed)
 		play();
-
-	return 0;
 }
 
-BYTE* MusicReader::getSample() {
+void MusicReader::getSample() {
+	// Set the SampleGrabber to use the grabCB callback function on the audio data it receives
 	HRESULT hr = pGrabber->SetCallback(&grabCB, 1);
 	if (FAILED(hr))
     {
         MessageBox(hwnd, TEXT("Error using callback"), TEXT("Error"), MB_ICONERROR);
     }
 	grabbed = true;
-	return pBuffer;
 }
 
-long MusicReader::getSampleSize() {
-	int index = 0;
-	for (int i = 0; pBuffer != NULL; pBuffer++) {
-		index++;
-	}
-	return index;
-}
-
+// check if a sample has been obtained yet
 bool MusicReader::isGrabbed() {
 	return grabbed;
 }
-
+// check if the sample buffer is ready to be read
 bool MusicReader::isReady() {
 	return grabCB.isReady();
 }
 
-/* Filter connecting functions from MSDN */
+
+/* ----------------------------------------- */
+
+/* Filter connecting functions from MSDN; not currently used, but may be needed if the filter graph needs to be customized further */
 
 // Query whether a pin is connected to another pin.
 //
 // Note: This function does not return a pointer to the connected pin.
-
 HRESULT MusicReader::IsPinConnected(IPin *pPin, BOOL *pResult)
 {
     IPin *pTmp = NULL;
