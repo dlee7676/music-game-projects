@@ -96,9 +96,9 @@ void MusicReader::setupSampleGrabber() {
 	// will be created automatically.
 	if (!grabbed) {
 		if (song == 0)
-			pGraph->RenderFile(TEXT("dest.mp3"), NULL);
+			pGraph->RenderFile(TEXT("arabesque.mp3"), NULL);
 		if (song == 1)
-			pGraph->RenderFile(TEXT("snows.mp3"), NULL);
+			pGraph->RenderFile(TEXT("dest.mp3"), NULL);
 	}
 	// Get connection information.
 	// This must be done after the Graph is created

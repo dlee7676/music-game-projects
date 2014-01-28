@@ -16,12 +16,13 @@ Handles drawing of game objects and game control. */
 #include <ctime>
 #include <string>
 #include <sstream>
-#include <fftw3.h>
+#include <armadillo>
 #include "gameObject.h"
 #include "musicReader.h"
 #include "qedit.h"
 
 using namespace std;
+using namespace arma;
 
 // define the screen resolution
 #define SCREEN_WIDTH  800
@@ -36,19 +37,22 @@ private:
 	LPD3DXSPRITE gameSprites;
 	LPD3DXFONT font;
 	D3DCOLOR fontColor;
-	RECT start1, start2, speed, quit, bottom, explosion, topDisplay1, topDisplay2, ratingDisplay;
+	RECT start1, start2, mode, quit, bottom, explosion, topDisplay1, topDisplay2, ratingDisplay;
 	LPDIRECT3DTEXTURE9 targetTexture;
 	vector<BYTE> sampleBuffer;
 	MusicReader musicReader;
-	fftw_complex *in, *out;
-	
+	cx_vec last;
+	bool drawLast;
+	int refresh;
+	D3DCOLOR pitchColor;
 	
 	int screen, song;
 	int menuSelection;
-	float speedMod, bpm;
+	float displayMode;
 	int index;
 	float time;
 	bool grabbed, run;
+	int pitch;
 
 public:
 	void setHwnd(HWND _hwnd);
