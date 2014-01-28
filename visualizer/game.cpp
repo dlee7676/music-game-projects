@@ -24,9 +24,12 @@ void Game::initGame() {
 
 	// set game parameters
 	initMenuScreen();
-	speedMod = 3.5;
+	displayMode = 3.5;
 	screen = 0;
 	menuSelection = 0;
+	displayMode = 0;
+	drawLast = false;
+	refresh = 0;
 	setRects();
 }
 
@@ -60,14 +63,18 @@ void Game::handleInput() {
 				Sleep(150);
 			}
 			if (GetAsyncKeyState(VK_LEFT)) {
-				if (menuSelection == 2 && speedMod > 0.25) {
-					speedMod-=0.25;
+				if (menuSelection == 2) {
+					if (!displayMode)
+						displayMode = 1;
+					else displayMode--;
 				}
 				Sleep(150);
 			}
 			if (GetAsyncKeyState(VK_RIGHT)) {
 				if (menuSelection == 2) {
-					speedMod+=0.25;
+					if (displayMode)
+						displayMode = 0;
+					else displayMode++;
 				}
 				Sleep(150);
 			}
@@ -76,13 +83,11 @@ void Game::handleInput() {
 				if (menuSelection == 0) {
 					screen = 1;
 					song = 0;
-					bpm = 170;
 					initGameScreen();
 				}
 				if (menuSelection == 1) {
 					screen = 1;
 					song = 1;
-					bpm = 75;
 					initGameScreen();
 				}
 				if (menuSelection == 3)
@@ -108,11 +113,13 @@ void Game::render() {
 			gameSprites->Begin(D3DXSPRITE_ALPHABLEND);
 			gameSprites->End();
 			toggleMenuText(0);
-			font->DrawText(NULL, TEXT("Play Destination Unknown"), -1, &start1, 0, fontColor);
+			font->DrawText(NULL, TEXT("Play Arabesque No. 1"), -1, &start1, 0, fontColor);
 			toggleMenuText(1);
-			font->DrawText(NULL, TEXT("Play Snows"), -1, &start2, 0, fontColor);
+			font->DrawText(NULL, TEXT("Play Destination Unknown"), -1, &start2, 0, fontColor);
 			toggleMenuText(2);
-			//drawTextAndNumber(TEXT("Speed Modifier: "), speedMod, speed, fontColor);
+			if (!displayMode)
+				font->DrawText(NULL, TEXT("Display mode: time"), -1, &mode, 0, fontColor);
+			else font->DrawText(NULL, TEXT("Display mode: frequency"), -1, &mode, 0, fontColor);
 			toggleMenuText(3);
 			font->DrawText(NULL, TEXT("Quit"), -1, &quit, 0, fontColor);
 
@@ -178,6 +185,7 @@ void Game::initGameScreen() {
 		DEFAULT_PITCH | FF_DONTCARE, TEXT("Franklin Gothic Demi"), &font); 
 	grabbed = false;
 	run = false;
+	pitch = 0;
 	playMusic(song);	
 }
 
@@ -189,29 +197,127 @@ void Game::loadTextures() {
 	}
 }
 
-/* void drawSamples(): draws sprites at the relative volume level given by each value in the sample buffer. */
+/* void drawSamples(): draws either a time or frequency spectrum graph of the current sample data from the sound file. */
 void Game::drawSamples() {
-	if (musicReader.isGrabbed()) {
-		// go through the values in the sample buffer and display a small enough number of them to fit on screen
-		for (size_t i = 0, j = -40; i < sampleBuffer.size()/2-2; i+=sampleBuffer.size()/300, j+=5) { 
-			if (!sampleBuffer.empty() && i < sampleBuffer.size() && musicReader.isReady()) {
-				// Currently the program only handles 16-bit sound samples.  Each pair of bytes is packed into a short and normalized to a value between -1 and 1.
-				// These values are then scaled to be drawn on the screen.
+	time++;
+	int n = sampleBuffer.size();
+	float current, realValue;
+	bool powerOfTwo = !(n == 0) && !(n & (n - 1));
+	if (!powerOfTwo) {
+		n = upper_power_of_two(n)/2;
+	}
+
+	int width;
+	if (!displayMode)
+		width = 5;
+	else width = 4;
+
+	cx_vec timeValues(8192);
+	cx_vec frequencyValues(8192);
+	cx_vec display(8192);
+	// convert byte values from the sound file into floats and add them to a container of samples for the time spectrum
+	if (musicReader.isReady() && !sampleBuffer.empty() && refresh <= 0) {
+		drawLast = false;
+		grabbed = true;
+		for (size_t i = 0; i < n; i++) {
+			if (n > 0 && musicReader.isReady() && !sampleBuffer.empty()) {
 				short sample = sampleBuffer[i+1];
-				// shift the first byte 8 places left and add the other byte
 				sample = (sample << 8) + sampleBuffer[i];
 				float input = sample/32768.0f;
-				// draw a sprite at the point indicated by the 16-bit value, and shift the resulting image to the middle of the screen
-				gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3(j, -1*(input)*250+255, 0), D3DCOLOR_ARGB(255, 255, 255, 255));
-				int a = 0;
+				timeValues(i) = input;
+				int b = 0;
 			}
 		}
-		/*
-		if (n > 0 && musicReader.isReady() && !sampleBuffer.empty()) {
-			fftw_destroy_plan(p);
-			//fftw_free(in); 
-			fftw_free(out);
-		}*/
+		// Fourier transform the sample values to get values for the frequency spectrum
+		frequencyValues = fft(timeValues);
+		int max = 0;
+		int index = 1;
+		for (size_t f = 0; f < 400; f++) {
+			if (real(frequencyValues(f)) > max) {
+				max = real(frequencyValues(f));
+				index = f;
+			}
+		}
+
+		for (size_t i = 0, j = 0, f = 1; i < n; i+=sampleBuffer.size()/300, j+=width, f++) {
+			if (i < sampleBuffer.size()) {
+				/* find whether the highest frequency value (representing the strength of that frequency) is in the low, middle, or high range; this will determine
+				   the colour used to draw the graph */
+				// bass
+				if (index < 5)
+					pitch = 0;
+				// mid-range
+				else if (index > 5 && index < 50)
+					pitch = 1;
+				// treble
+				else if (index > 50 && index < 250)
+					pitch = 2;
+				// high frequencies
+				else pitch = 3;
+
+				// choose whether time or frequency spectrum will be displayed
+				if (!displayMode) {
+					current = -1*real(timeValues(i))*250+255;
+					last = timeValues;
+				}
+				else {
+					current = -3*abs(real(frequencyValues(i)))+500;
+					last = frequencyValues;
+				}
+
+				// draw the time or frequency graph with the appropriate colour
+				if(musicReader.isReady() && !sampleBuffer.empty()) {
+					switch(pitch) {
+						case 0: {
+							// yellow = bass
+							pitchColor = D3DCOLOR_ARGB(255, 200, 255, 50);
+							break;
+						}
+						case 1: {
+							// green = mid-range
+							pitchColor = D3DCOLOR_ARGB(255, 50, 255, 50);
+							break;
+						}
+						case 2: {
+							// cyan = treble
+							pitchColor = D3DCOLOR_ARGB(255, 50, 255, 200);
+							break;
+						}
+						case 3: {
+							// blue = high frequencies
+							pitchColor = D3DCOLOR_ARGB(255, 50, 150, 200);
+							break;								
+						}
+						default: {	
+							pitchColor = D3DCOLOR_ARGB(100, 255, 255, 255);
+							break;
+						}
+					}
+					if (displayMode) {
+						for (int y = 0; y < current; y+=3) {
+							current = abs(real(frequencyValues(i)));
+							gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3((float)j, 500-(y*3), 0), D3DCOLOR_ARGB(250,250,250,250));
+						}
+						gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3((float)j, -3*current+500, 0), pitchColor);
+					}
+					else gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3((float)j, current, 0), pitchColor);
+				}
+			}
+		}
+	}
+	// attempting to reduce screen flickering by also drawing previous frame when in the frequency graph 
+	if (grabbed) {
+		for (size_t i = 0, j = 0, f = 1; i < n; i+=sampleBuffer.size()/300, j+=width, f++) {
+			if (displayMode) {
+				int a = 0;
+				current = -3*abs(real(last(i)))+500;
+				for (int y = 0; y < current; y+=3) {
+					current = abs(real(last(i)));
+					gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3((float)j, 500-(y*3), 0), D3DCOLOR_ARGB(100,240,240,240));
+				}
+				gameSprites->Draw(targetTexture, &explosion, NULL, &D3DXVECTOR3((float)j, -3*current+500, 0), pitchColor);
+			}
+		}
 	}
 }
 
@@ -234,13 +340,13 @@ void Game::setRects() {
 	start2.right=start1.right;
 	start2.top=start1.bottom+30;
 	start2.bottom=start2.top+45;
-	speed.left=start2.left;
-	speed.right=start2.right;
-	speed.top=start2.bottom+30;
-	speed.bottom=speed.top+45;
-	quit.left=speed.left;
-	quit.right=speed.right;
-	quit.top=speed.bottom+30;
+	mode.left=start2.left;
+	mode.right=start2.right;
+	mode.top=start2.bottom+30;
+	mode.bottom=mode.top+45;
+	quit.left=mode.left;
+	quit.right=mode.right;
+	quit.top=mode.bottom+30;
 	quit.bottom=quit.top+45;
 	topDisplay1.left = 550;
 	topDisplay1.right = 800;
