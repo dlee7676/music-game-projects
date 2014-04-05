@@ -25,10 +25,8 @@ STDMETHODIMP   CGrabCB::BufferCB(double   SampleTime,   BYTE   *pBuffer,   long 
 		ready = false;
 		(*drawValue).clear();
 		for (int i = 0; i < BufferLen; i++) {
-		(*drawValue).push_back(pBuffer[i]);
-		int a = 0;
+			(*drawValue).push_back(pBuffer[i]);
 		}
-		int a = 0;
 		currentLength = BufferLen;
 		ready = true;
         return   S_OK;   
