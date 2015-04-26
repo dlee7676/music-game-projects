@@ -1,0 +1,1 @@
+This is a demonstration of a simple music game engine, based on games like Stepmania or Beatmania.
