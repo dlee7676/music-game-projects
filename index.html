@@ -28,20 +28,24 @@
         </ul>
       </header>
       <section>
-        <p>Music game</p>
+        <h2><a id="game" />Music game</h2>
 
 <p>This is a demonstration of a basic music game engine made with DirectX.  It is based on games like Stepmania or Guitar Hero, in which scrolling notes arranged in time with a piece of music have to be hit when they are within a certain range of a target area.  </p>
 
 <p>Song clips are from "REM III" by Dimrain47 and "Destination Unknown" by Renard; I do not own them and they are only being used to demonstrate the program.</p>
 
+<p>Demonstration video: <iframe width="420" height="315" src="https://www.youtube.com/embed/1_GLj39t5v0" frameborder="0" allowfullscreen></iframe></p>
 <p>Source code: <a href="https://github.com/dlee7676/music-game-projects/tree/master/music%20game">https://github.com/dlee7676/music-game-projects/tree/master/music%20game</a></p>
 
-<p>Visualizer</p>
+<h2><a id="visualizer" />Visualizer</p>
 
-<p>This DirectX program displays the waveform of an audio file in real time, similar to the Windows Media Player visualizer.  It will read any 16-bit audio file, such as many .wav and .mp3 files.  It uses the same basic code as the music game demo, and could be integrated into it as a background.  Audio clips are from Destination Unknown by Renard and Snows ~Soshite Kiseki~ by DJ Sharpnel.  I do not own them, and they are used only for demonstration purposes.</p>
+<p>This DirectX program displays the waveform of an audio file in real time, similar to the Windows Media Player visualizer.  It will read any 16-bit audio file, such as many .wav and .mp3 files.  It uses the same basic code as the music game demo, and could be integrated into it as a background.  The program can also read the frequency spectrum of the audio in addition to the waveform, by performing a Fourier transform on the audio data values as they are collected.  This allows the visualizer to react to whether high or low frequencies are dominant in the sound, which is represented by colouring the graph; there is also the option to visualize the frequency values in a bar graph.</p>  
+
+<p>The first audio sample is from <a href="http://first-unitarian.com/audio/debussy-first-arabesque.mp3">http://first-unitarian.com/audio/debussy-first-arabesque.mp3</a>, and the second is from Destination Unknown by Renard.  I do not own them, and they are used only for demonstration purposes.</p>
 
 <p>This program has been updated to be able to read the frequency spectrum of the audio as well as the waveform, by Fourier transforming the audio data as it is collected.  This allows the visualizer to react to whether high or low frequencies are dominant in the sound, and the option to visualize the frequency values in a bar graph has been added.  The updated version can be seen below:</p>
 
+<p>Demonstration video: <iframe width="420" height="315" src="https://www.youtube.com/embed/4QpE0zMpxjY" frameborder="0" allowfullscreen></iframe></p>
 <p>Source code: <a href="https://github.com/dlee7676/music-game-projects/tree/master/visualizer">https://github.com/dlee7676/music-game-projects/tree/master/visualizer</a></p>
       </section>
       <footer>
