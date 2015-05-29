@@ -1,6 +1,3 @@
-Music game demo
-by David Lee
-
 This program is a demonstration of a basic music game engine made with DirectX.  It is based on games like Stepmania or Guitar Hero, in which scrolling notes arranged in time with a piece of music have to be hit when they are within a certain range of a target area.  The controls during play are the D, F, J, and K keys, which trigger the target columns from left to right.  
 
 Song clips are from "REM III" by Dimrain47 and "Destination Unknown" by Renard; I do not own them and they are only being used to demonstrate the program.
